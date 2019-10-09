@@ -44,42 +44,6 @@ public class Rule implements Constraint {
         return conclusion;
     }
 
-//    @Override
-//    public boolean isSatisfiedBy(List<RestrictedDomain> assessment) {
-//        boolean isSatisfied = true;
-//        //Pour chaque variable de l'instance testée
-//        for (int i = 0; i < assessment.size(); i++) {
-//            Variable assessmentPremVar = assessment.get(i).getVariable();
-//            //Si la prémisse est concernée par la variable
-//            for (int x = 0; x < premise.size(); x++) {
-//                if (premise.get(x).getVariable() == assessmentPremVar) {
-//                    /*Si le sous-domaine de la variable tel qu'inclus dans la prémisse
-//                    contient la valeur associée à cette variable dans l'instance testée*/
-//                    if (premise.get(x).subDomainContains(assessment.get(i).getSubdomain())) {
-//                        isSatisfied = false;
-//                        //Pour chaque variable de l'instance testée
-//                        for (int j = 0; j < assessment.size(); j++) {
-//                            Variable assessmentCclVar = assessment.get(j).getVariable();
-//                            /*Si le domaine de la variable tel qu'incluse 
-//                            dans la conclusion contient la valeur associée
-//                            à cette variable dans l'instance testée*/
-//                            for (int y = 0; y < conclusion.size(); y++) {
-//                                if (conclusion.get(y).getVariable() == assessmentCclVar) {
-//                                    if (conclusion.get(y).subDomainContains(assessment.get(j).getSubdomain())) {
-//                                        isSatisfied = true;
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    } else {
-//                        isSatisfied = true;
-//                    }
-//                }
-//            }
-//        }
-//
-//        return isSatisfied;
-//    }
     @Override
     public boolean isSatisfiedBy(List<RestrictedDomain> assessment) {
 
