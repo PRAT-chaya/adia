@@ -26,6 +26,10 @@ public class State {
         this.affectation.put(var, val);
     }
     
+    public Map<Variable,String> getAffectation() {
+        return this.affectation;
+    }
+    
     public boolean satisfies(Map<Variable,String> partialState){
         for (Iterator<Variable> It = partialState.keySet().iterator(); It.hasNext();) {
             Variable x = It.next();
