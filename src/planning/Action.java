@@ -5,10 +5,10 @@
  */
 package planning;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import representation.Rule;
 import representation.Variable;
 
 /**
@@ -17,15 +17,19 @@ import representation.Variable;
  */
 public class Action {
     
-    protected Set<Rule>  rules;
+    protected Set<ActionRule>  rules;
 
-    public Action(Set<Rule> rules) {
-        this.rules = rules;
+    public Action() {
+        this.rules = new HashSet();
+    }
+    
+    public void addRule(ActionRule rule){
+        this.rules.add(rule);
     }
        
     public boolean is_applicable(State state){
-        for(Iterator<Rule> ruleIt = rules.iterator(); ruleIt.hasNext();){
-            if(state.satisfies(ruleIt.next().getPremise())){
+        for(Iterator<ActionRule> ruleIt = rules.iterator(); ruleIt.hasNext();){
+            if(state.satisfies(ruleIt.next().getPreconditions())){
                 return true;
             }
         }

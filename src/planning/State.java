@@ -7,12 +7,8 @@ package planning;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import representation.Rule;
 import representation.Variable;
-import representation.RestrictedDomain;
 
 /**
  *
@@ -44,25 +40,31 @@ public class State {
     public State apply(Action action){
         
         State nextState = this.copy(); 
-        for(Iterator<Rule> ruleIt = action.rules.iterator(); ruleIt.hasNext();){
-            
-            Map<Variable,String> effets;  
-            effets = ruleIt.next().getConclusion();
-            if(nextState.satisfies(effets)){
-                for(Iterator<RestrictedDomain> rdIt = effets.iterator(); rdIt.hasNext();){
+        if(action.is_applicable(this)){
+            for(Iterator<ActionRule> ruleIt = action.rules.iterator(); ruleIt.hasNext();){
+
+                Map<Variable,String> effets; 
+                
+                effets = ruleIt.next().getEffets();
+                
+                if(nextState.satisfies(effets)){
                     
-                }  
-            }
-            
+                    effets.entrySet().forEach((entry) -> {
+                        nextState.affectation.replace(entry.getKey(), entry.getValue());
+                    });  
+                }
+
+            }   
         }
+        
         return nextState;
     }
     
     public State copy(){
         State stateCopy = new State();
-        for(Map.Entry<Variable, String> entry : this.affectation.entrySet()){
+        this.affectation.entrySet().forEach((entry) -> {
             stateCopy.add(entry.getKey(), entry.getValue());
-        }
+        });
         return stateCopy;
     }
     
