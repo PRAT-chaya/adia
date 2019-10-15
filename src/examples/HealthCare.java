@@ -2,9 +2,13 @@
 package examples;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import planning.Action;
+import planning.ActionRule;
 import representation.Variable;
 
 /**
@@ -16,8 +20,8 @@ public class HealthCare {
     List<Variable> maladies;
     List<Variable> syptms;
     public HealthCare(int n) {
-         //Variables booléennes -> maladies
         
+        //Variables booléennes -> maladies
         Variable angina = new Variable("ANGINA","TRUE","FALSE");
         Variable flu = new Variable("FLU","TRUE","FALSE");
         Variable pox = new Variable("POX","TRUE","FALSE");
@@ -38,7 +42,18 @@ public class HealthCare {
             symptCopy.add(it.next());    
         }
         
+        Random r = new Random();
         
+        Map<Variable,String> preconditions = new HashMap();
+        Map<Variable,String> effets = new HashMap();
+        effets.put(this.syptms.remove(r.nextInt(this.syptms.size())), "none");
+        ActionRule rule = new ActionRule(preconditions, effets);
+        medecine.addRule(rule);
+        
+        
+        
+        
+        return medecine;
     }
         
         
