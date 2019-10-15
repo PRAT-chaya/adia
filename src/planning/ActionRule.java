@@ -26,6 +26,11 @@ public class ActionRule {
         this.effets = new HashMap<Variable,String>();
     }
     
+    public ActionRule(Map<Variable,String> pre, Map<Variable, String> effets) {
+        this.preconditions = pre;
+        this.effets = effets;
+    }
+    
     public void ajoutPrecondition(Variable var, String val){
         this.preconditions.put(var, val);
     }
