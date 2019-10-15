@@ -27,8 +27,8 @@ public class State {
     }
     
     public boolean satisfies(Map<Variable,String> partialState){
-        for (Iterator<Variable> It = partialState.keySet().iterator(); It.hasNext();) {
-            Variable x = It.next();
+        if(partialState.isEmpty()){return true;}
+        for (Variable x : partialState.keySet()) {
             if(!(affectation.containsKey(x) || !partialState.get(x).equals(affectation.get(x)))){
                 return true;
             }

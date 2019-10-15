@@ -30,12 +30,24 @@ public class Action {
     public boolean is_applicable(State state){
         for(Iterator<ActionRule> ruleIt = rules.iterator(); ruleIt.hasNext();){
             if(state.satisfies(ruleIt.next().getPreconditions())){
-                return true;
+                return true;   
             }
         }
         return false;
 
     }
+
+    @Override
+    public String toString() {
+        String ts = "Action{ \n";
+        for(Iterator<ActionRule> ruleIt = rules.iterator(); ruleIt.hasNext();){
+            ts += ruleIt.next().toString() + "\n";
+
+        }
+        ts += '}';
+        return ts;
+    }
+    
     
     
     
