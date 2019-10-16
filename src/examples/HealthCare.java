@@ -19,13 +19,15 @@ public class HealthCare {
     
     public static void main(String[] args) {
         HealthCare hc = new HealthCare();
-        Action a = hc.createRandMedecine();
+        Action a = hc.makeRandMedecine();
         System.out.print(a);
         
     }
     
     List<Variable> maladies;
     List<Variable> syptms;
+    List<Action> medecine;
+    Action guerison;
     public HealthCare() {
         
         //Variables booléennes -> maladies
@@ -40,11 +42,26 @@ public class HealthCare {
         Variable cough = new Variable("COUGH","HIGH","MEDIUM","LOW","NONE");
         Variable buttons = new Variable("BUTTONS","HIGH","MEDIUM","LOW","NONE");
         syptms = new ArrayList();
-        syptms.add(fever); syptms.add(cough); syptms.add(buttons); 
+        syptms.add(fever); syptms.add(cough); syptms.add(buttons);
+        
+        //Intialisation liste de medicaments
+        medecine = new ArrayList();
+        
+        guerison = new Action();
+        for (Variable m: maladies) {
+            ActionRule r = new ActionRule();
+            for(Variable s: syptms){
+                r.ajoutPrecondition(s, "NONE");
+            }
+            r.ajoutEffet(m, "FALSE");
+            guerison.addRule(r);
+        }
+        
+        
 
     }
      
-    public Action createRandMedecine(){
+    public Action makeRandMedecine(Random r){
         Action medecine = new Action();
         
         //copie de la liste des symptomes dans symptCopy
@@ -52,8 +69,6 @@ public class HealthCare {
         for (Iterator<Variable> it = this.syptms.iterator(); it.hasNext();) {
             symptCopy.add(it.next());    
         }
-        
-        Random r = new Random();
         //fin de la copie
         
         ActionRule rule = new ActionRule();
@@ -78,6 +93,14 @@ public class HealthCare {
         
         
         return medecine;
+    }
+    
+    public void makeNMedecine(int n, int seed){
+        
+        Random r = new Random(seed);
+        for (int i = 0; i < n; i++) {    
+            medecine.add(makeRandMedecine(r));
+        }
     }
             
     public State genInitialState() {      
