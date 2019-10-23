@@ -5,8 +5,10 @@
  */
 package representation;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -35,6 +37,14 @@ public class Rule implements Constraint {
     public Set<Variable> getScope() {
         return scope;
     }
+    
+    @Override
+    public List<RestrictedDomain> getDomains(){
+        List<RestrictedDomain> domains = new ArrayList();
+        domains.addAll(premise);
+        domains.addAll(conclusion);
+        return domains;
+    }
 
     public List<RestrictedDomain> getPremise() {
         return premise;
@@ -46,6 +56,7 @@ public class Rule implements Constraint {
 
     @Override
     public boolean isSatisfiedBy(List<RestrictedDomain> assessment) {
+<<<<<<< Updated upstream
         boolean isSatisfied = true;
         //Pour chaque variable de l'instance testée
         for (int i = 0; i < assessment.size(); i++) {
@@ -69,6 +80,16 @@ public class Rule implements Constraint {
                                     }
                                 }
                             }
+=======
+        boolean isSatisfied = true; // Si l'assignation n'est pas concernée par la prémisse elle est satisfaisante
+        if (this.isInPremiseScope(assessment)) {
+            for (RestrictedDomain crd : conclusion) {
+                isSatisfied = false;
+                for (RestrictedDomain assessmentRd : assessment) {
+                    for (String val : assessmentRd.getSubdomain()) {
+                        if (crd.getSubdomain().contains(val)) {
+                            isSatisfied = true;
+>>>>>>> Stashed changes
                         }
                     } else {
                         isSatisfied = true;
@@ -80,6 +101,7 @@ public class Rule implements Constraint {
         return isSatisfied;
     }
 
+<<<<<<< Updated upstream
 //    @Override
 //    public boolean isSatisfiedBy(Map<Variable, String> assessment) {
 //        boolean isSatisfied = true;
@@ -115,4 +137,60 @@ public class Rule implements Constraint {
 //        }
 //        return isSatisfied;
 //    }
+=======
+    @Override
+    public boolean isSatisfiedBy(Map<Variable, String> assessment) {
+        boolean isSatisfied = true; // Si l'assignation n'est pas concernée par la prémisse elle est satisfaisante
+        if (this.isInPremiseScope(assessment)) {
+            for (RestrictedDomain crd : conclusion) {
+                isSatisfied = false;
+                for (Variable var : assessment.keySet()) {
+                    if (crd.getSubdomain().contains(assessment.get(var))) {
+                        isSatisfied = true;
+                    }
+                }
+            }
+        }
+        return isSatisfied;
+    }
+
+    public boolean isInPremiseScope(List<RestrictedDomain> assessment) {
+        boolean isInPremiseScope = true;
+        for (RestrictedDomain prd : premise) {
+            for (RestrictedDomain assessmentRd : assessment) {
+                if (prd.getVariable() == assessmentRd.getVariable()) {
+                    for (String val : assessmentRd.getSubdomain()) {
+                        if (!prd.getSubdomain().contains(val)) {
+                            isInPremiseScope = false;
+                        }
+                    }
+                }
+            }
+        }
+        return isInPremiseScope;
+    }
+
+    public boolean isInPremiseScope(Map<Variable, String> assessment) {
+        boolean isInPremiseScope = true;
+        for (RestrictedDomain prd : premise) {
+            for (Variable var : assessment.keySet()) {
+                if (prd.getVariable() == var) {
+                    if (!prd.getSubdomain().contains(assessment.get(var))) {
+                        isInPremiseScope = false;
+                    }
+                }
+            }
+        }
+        return isInPremiseScope;
+    }
+
+    @Override
+    public boolean filter(List<RestrictedDomain> assessment, Map<Variable, Set<String>> unassignedVars) {
+        boolean filtered = false;
+        for (RestrictedDomain assessmentRd : assessment) {
+
+        }
+        return filtered;
+    }
+>>>>>>> Stashed changes
 }

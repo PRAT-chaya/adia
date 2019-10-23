@@ -6,13 +6,17 @@
 package representation;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  *
  * @author 21907858
  */
-public interface Constraint {    
+public interface Constraint {
     public Set<Variable> getScope();
+    public List<RestrictedDomain> getDomains();
     public boolean isSatisfiedBy(List<RestrictedDomain> assessment);
+    public boolean isSatisfiedBy(Map<Variable, String> assessment);
+    public boolean filter(List<RestrictedDomain> variables, Map<Variable, Set<String>> assessment);
 }

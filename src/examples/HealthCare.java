@@ -33,11 +33,13 @@ public class HealthCare {
         Variable flu = new Variable("FLU","TRUE","FALSE");
         Variable pox = new Variable("POX","TRUE","FALSE");
         Variable plague = new Variable("PLAGUE","TRUE","FALSE");
+        maladies = new ArrayList();
         maladies.add(angina); maladies.add(flu); maladies.add(pox); maladies.add(plague);
         //Variables à niveau -> symptômes
         Variable fever = new Variable("FEVER","HIGH","MEDIUM","LOW","NONE");
         Variable cough = new Variable("COUGH","HIGH","MEDIUM","LOW","NONE");
         Variable buttons = new Variable("BUTTONS","HIGH","MEDIUM","LOW","NONE");
+        syptms = new ArrayList();
         syptms.add(fever); syptms.add(cough); syptms.add(buttons); 
 
     }
@@ -47,7 +49,7 @@ public class HealthCare {
         
         //copie de la liste des symptomes dans symptCopy
         List<Variable> symptCopy = new ArrayList();
-        for (Iterator<Variable> it = this.maladies.iterator(); it.hasNext();) {
+        for (Iterator<Variable> it = this.syptms.iterator(); it.hasNext();) {
             symptCopy.add(it.next());    
         }
         
