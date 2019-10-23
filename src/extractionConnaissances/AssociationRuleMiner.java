@@ -46,32 +46,25 @@ public class AssociationRuleMiner {
      * @return List<Item> Notre liste d'items filtrés
      */
     public List<ItemSet> getValidAssociationRules(int freqMin, int confianceMin) {
-       Boolean filtered = false;
+       List<ItemSet> allItems = new ArrayList();
        
        for(ItemSet itemSet : itemSets) {
           if(itemSet.getFrequence() < freqMin) { 
               itemSets.remove(itemSet);
               continue;
-          }
-          
+          }   
           for(ItemSet singleton : this.singletons) {
+            Variable varSingleton = singleton.getVariables().iterator().next();
+            Variable firstVarItemset = itemSet.getVariable(varSingleton);
+            
+            // Si notre singleton ne correspond pas à celui de notre itemSet
+            if(varSingleton != firstVarItemset) { continue; }
+                        
             double confiance = itemSet.getFrequence() / singleton.getFrequence();
             
-            if(singleton.getFrequence() < freqMin || itemSet.getConfiance() < confianceMin) { 
-                singletons.remove(itemSet);
-                continue;
-            }
-            
             itemSet.setConfiance(confiance);
-            filtered = true; // On a au moins une association valide
+            allItems.add(itemSet);
           }
-       }
-       
-       List<ItemSet> allItems = new ArrayList();
-       
-       if(filtered) {
-           allItems.addAll(this.itemSets);
-           allItems.addAll(this.singletons);
        }
        
        return allItems;

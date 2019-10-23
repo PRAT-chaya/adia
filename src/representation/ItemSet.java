@@ -24,6 +24,16 @@ public class ItemSet {
         this.frequence = frequence;
         this.confiance = confiance;
     }
+  
+    public Variable getVariable(Variable var) {
+        for(Variable setvar : this.variables) {
+            if(setvar == var) {
+                return setvar;
+            }
+        }
+        
+        return null;
+    }
 
     /**
      * @return the variables
