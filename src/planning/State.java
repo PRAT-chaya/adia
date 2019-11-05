@@ -15,17 +15,17 @@ import representation.Variable;
  * @author 21600639
  */
 public class State {
-    
-    private Map<Variable,String> affectation;
+
+    private Map<Variable, String> affectation;
 
     public State() {
         this.affectation = new HashMap();
     }
-    
-    public void add(Variable var, String val){
+
+    public void add(Variable var, String val) {
         this.affectation.put(var, val);
     }
-    
+
     public Map<Variable,String> getAffectation() {
         return this.affectation;
     }
@@ -33,44 +33,42 @@ public class State {
     public boolean satisfies(Map<Variable,String> partialState){
         if(partialState.isEmpty()){return true;}
         for (Variable x : partialState.keySet()) {
-            if(!(affectation.containsKey(x) || !partialState.get(x).equals(affectation.get(x)))){
-                return true;
+            if (!(affectation.containsKey(x)) || !(partialState.get(x).equals(affectation.get(x)))) {
+                return false;
             }
         }
-        return false;
-        
+        return true;
     }
-    
-    public State apply(Action action){
-        
-        State nextState = this.copy(); 
-        if(action.is_applicable(this)){
-            for(Iterator<ActionRule> ruleIt = action.rules.iterator(); ruleIt.hasNext();){
 
-                Map<Variable,String> effets; 
-                
-                effets = ruleIt.next().getEffets();
-                
-                if(nextState.satisfies(effets)){
-                    
-                    effets.entrySet().forEach((entry) -> {
-                        nextState.affectation.replace(entry.getKey(), entry.getValue());
-                    });  
+    public State apply(Action action) {
+
+        if (action.is_applicable(this)) {
+            for (ActionRule rule : action.getRules()) {
+                if (this.satisfies(rule.getPreconditions())) {
+                    for (Variable var : rule.getEffets().keySet()) {
+                        this.affectation.replace(var, rule.getEffets().get(var));
+                    }
                 }
 
-            }   
+            }
         }
-        
-        return nextState;
+
+        return this;
     }
-    
-    public State copy(){
+
+    public State copy() {
         State stateCopy = new State();
         this.affectation.entrySet().forEach((entry) -> {
             stateCopy.add(entry.getKey(), entry.getValue());
         });
         return stateCopy;
     }
-    
-    
+
+    public void printAffectation() {
+        for (Variable var : this.affectation.keySet()) {
+            System.out.println(var.getName() + " => " + this.affectation.get(var));
+        }
+        System.out.println("}");
+    }
+
 }

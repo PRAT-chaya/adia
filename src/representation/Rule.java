@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import satisfiability.GeneralizedArcConsistency;
 
 /**
  *
@@ -37,9 +38,9 @@ public class Rule implements Constraint {
     public Set<Variable> getScope() {
         return scope;
     }
-    
+
     @Override
-    public List<RestrictedDomain> getDomains(){
+    public List<RestrictedDomain> getDomains() {
         List<RestrictedDomain> domains = new ArrayList();
         domains.addAll(premise);
         domains.addAll(conclusion);
@@ -56,6 +57,10 @@ public class Rule implements Constraint {
 
     @Override
     public boolean isSatisfiedBy(List<RestrictedDomain> assessment) {
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
         boolean isSatisfied = true; // Si l'assignation n'est pas concernée par la prémisse elle est satisfaisante
         if (this.isInPremiseScope(assessment)) {
             for (RestrictedDomain crd : conclusion) {
@@ -68,6 +73,8 @@ public class Rule implements Constraint {
                     }
                 }
             }
+        } else {
+            isSatisfied = true;
         }
         return isSatisfied;
     }
@@ -119,11 +126,13 @@ public class Rule implements Constraint {
     }
 
     @Override
-    public boolean filter(List<RestrictedDomain> assessment, Map<Variable, Set<String>> unassignedVars) {
-        boolean filtered = false;
-        for (RestrictedDomain assessmentRd : assessment) {
-
+    public boolean filter(List<RestrictedDomain> toCheck, Map<Variable, Set<String>> variables) {
+        GeneralizedArcConsistency.enforceArcConsistency(this, new Domains(toCheck));
+        for (RestrictedDomain domain : toCheck){
+            if (domain.subDomainContains((variables.get(domain.getVariable())))){
+                return true;
+            }
         }
-        return filtered;
+        return false;
     }
 }
