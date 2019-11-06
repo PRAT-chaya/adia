@@ -21,9 +21,12 @@ import representation.Variable;
 public class FrequentItemsetMiner {
 
     BooleanDatabase db;
+    Set<Variable> minedScope;
 
     public FrequentItemsetMiner(BooleanDatabase db) {
         this.db = db;
+        this.minedScope = new HashSet();
+        minedScope.addAll(db.getVariables());
     }
 
     public Map<Set<Variable>, Integer> frequentItemsets(int minFreq) {
@@ -60,8 +63,22 @@ public class FrequentItemsetMiner {
                 freqEnough = false;
             }
         }
-
+        Set<Variable> tempScope = new HashSet();
+        for (Set<Variable> itemset : frequentItemsets.keySet()) {
+            for (Variable var : this.minedScope) {
+                if (itemset.contains(var)) {
+                    if (!tempScope.contains(var)) {
+                        tempScope.add(var);
+                    }
+                }
+            }
+        }
+        minedScope = tempScope;
         return frequentItemsets;
+    }
+
+    public Set<Variable> getMinedScope() {
+        return minedScope;
     }
 
     public static Map<Set<Variable>, Integer> freqFilter(Map<Set<Variable>, Integer> tuplesFrequence, int minFreq) {
@@ -155,15 +172,6 @@ public class FrequentItemsetMiner {
             Variable[] temp = new Variable[r];
             temp = data.clone();
             output.add(temp);
-//            for (int j = 0; j < r; j++) {
-//                System.out.print(data[j].getName() + " ");
-//            }
-//            for (Variable[] array : output) {
-//                for (int j = 0; j < r; j++) {
-//                    System.out.print(array[j].getName() + " ");
-//                }
-//                System.out.println("");
-//            }
             return;
         }
 

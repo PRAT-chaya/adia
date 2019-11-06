@@ -57,10 +57,6 @@ public class Rule implements Constraint {
 
     @Override
     public boolean isSatisfiedBy(List<RestrictedDomain> assessment) {
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
         boolean isSatisfied = true; // Si l'assignation n'est pas concernée par la prémisse elle est satisfaisante
         if (this.isInPremiseScope(assessment)) {
             for (RestrictedDomain crd : conclusion) {
@@ -89,6 +85,19 @@ public class Rule implements Constraint {
                     if (crd.getSubdomain().contains(assessment.get(var))) {
                         isSatisfied = true;
                     }
+                }
+            }
+        }
+        return isSatisfied;
+    }
+
+    public boolean isSatisfiedBy(Set<Variable> booleanAssessment) {
+        boolean isSatisfied = true; // Si l'assignation n'est pas concernée par la prémisse elle est satisfaisante
+        if (this.isInPremiseScope(booleanAssessment)) {
+            isSatisfied = false;
+            for (RestrictedDomain crd : conclusion) {
+                if(booleanAssessment.contains(crd.getVariable())){
+                    return true;
                 }
             }
         }
@@ -125,14 +134,40 @@ public class Rule implements Constraint {
         return isInPremiseScope;
     }
 
+    public boolean isInPremiseScope(Set<Variable> booleanAssessment) {
+        boolean isInPremiseScope = true;
+        for (RestrictedDomain prd : premise) {
+            if (!booleanAssessment.contains(prd.getVariable())) {
+                isInPremiseScope = false;
+            }
+        }
+        return isInPremiseScope;
+    }
+
     @Override
     public boolean filter(List<RestrictedDomain> toCheck, Map<Variable, Set<String>> variables) {
         GeneralizedArcConsistency.enforceArcConsistency(this, new Domains(toCheck));
-        for (RestrictedDomain domain : toCheck){
-            if (domain.subDomainContains((variables.get(domain.getVariable())))){
+        for (RestrictedDomain domain : toCheck) {
+            if (domain.subDomainContains((variables.get(domain.getVariable())))) {
                 return true;
             }
         }
         return false;
+    }
+    
+    @Override
+    public String toString(){
+        String premStr = "PREM{\n";
+        String cclStr = "CCL{\n";
+        for(RestrictedDomain domain : this.premise){
+            premStr += domain.toString() + ",\n";
+        }
+        for(RestrictedDomain domain : this.conclusion){
+            cclStr += domain.toString() + ",\n";
+        }
+        premStr += "}";
+        cclStr += "}";
+        String ruleStr = "***RULE***\n" + premStr + "\n" + cclStr;
+        return ruleStr;
     }
 }
