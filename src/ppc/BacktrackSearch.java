@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import representation.*;
+import satisfiability.GeneralizedArcConsistency;
 
 /**
  *
@@ -32,159 +33,149 @@ import representation.*;
 public class BacktrackSearch {
 
     protected final Set<Constraint> constraints;
-    private final Set<Variable> scope;
-    private Map<Variable, Iterator<String>> itMap;
-    private Map<Variable, String> currValMap;
-    private Set<Map<Variable, String>> allSolutions;
-    private Iterator<Map<Variable, String>> solit;
+    protected final Set<Variable> scope;
 
     public BacktrackSearch(Set<Constraint> constraints) {
-        this.itMap = new HashMap();
-        this.currValMap = new HashMap();
-        this.allSolutions = new HashSet();
-        this.solit = allSolutions.iterator();
         this.constraints = constraints;
-        scope = new HashSet();
+        this.scope = new HashSet();
         for (Constraint constraint : constraints) {
-            for (Variable var : constraint.getScope()) {
-                this.scope.add(var);
-            }
+            this.scope.addAll(constraint.getScope());
         }
-        for (Variable var : scope) {
-            itMap.put(var, var.getDomain().iterator());
-            currValMap.put(var, itMap.get(var).next());
-        }
-
     }
 
     public Set<List<RestrictedDomain>> allSolutions() {
         Map<Variable, String> partialAssignment = new HashMap();
         Deque<Variable> unassignedVariables = new LinkedList();
-        for (Variable var : scope) {
-            unassignedVariables.addFirst(var);
+        unassignedVariables.addAll(this.scope);
+        Set<Map<Variable, String>> accumulator = new HashSet();
+        Map<Variable, Set<String>> domains = new HashMap();
+        for (Variable var : this.scope) {
+            Set<String> domain = new HashSet();
+            domain.addAll(var.getDomain());
+            domains.put(var, domain);
         }
-        Set<Map<Variable, String>> res = new HashSet();
-        this.solutions(partialAssignment, unassignedVariables, res);
-        Set<List<RestrictedDomain>> solutionSet = new HashSet();
-        for (Map<Variable, String> solution : allSolutions) {
-            List<RestrictedDomain> tempList = new ArrayList();
+
+        GeneralizedArcConsistency gac = new GeneralizedArcConsistency(this.constraints);
+        gac.enforceArcConsistency(domains);
+
+        Set<Map<Variable, String>> solutions = solutions(partialAssignment, unassignedVariables, domains, accumulator);
+        Set<List<RestrictedDomain>> allSolutions = new HashSet();
+        for (Map<Variable, String> solution : solutions) {
+            List<RestrictedDomain> rdSolution = new ArrayList();
             for (Variable var : solution.keySet()) {
-                tempList.add(new RestrictedDomain(var, solution.get(var)));
+                Set<String> domain = new HashSet();
+                domain.add(solution.get(var));
+                rdSolution.add(new RestrictedDomain(var, domain));
             }
-            solutionSet.add(tempList);
+            allSolutions.add(rdSolution);
         }
-        return solutionSet;
-    }
-
-    protected void solutions(Map<Variable, String> partialAssignment,
-            Deque<Variable> unassignedVariables, Set<Map<Variable, String>> accumulator) {
-        String accuStr = "";
-        for (Map<Variable, String> assignment : accumulator) {
-            accuStr += "[" + assignmentToString(assignment) + "]\n";
-        }
-        System.out.println("\n***Accu***\n" + accuStr);
-        if (!partialAssignment.keySet().equals(scope)) {        //Si l'assignation est incomplète, on assigne les variables manquantes
-            assignVar(partialAssignment, unassignedVariables, accumulator); 
-            solutions(partialAssignment, unassignedVariables, accumulator);
-        } else if (accumulator.contains(partialAssignment)) {
-            System.out.println(assignmentToString(partialAssignment));
-            Variable cursor = unassignedVariables.peekFirst();
-            Deque<Variable> temp = new LinkedList();
-            for (Iterator<Variable> dupIt = unassignedVariables.iterator(); dupIt.hasNext();) {
-                temp.addLast(dupIt.next());
-            }
-            temp.removeFirst();
-            while (!itMap.get(cursor).hasNext()) {
-                partialAssignment.remove(cursor);   //on enlève la variable entièrement testée de l'assignation
-                reinitIt(cursor);                   //on réinitialise son itérateur de valeurs
-                cursor = temp.pollFirst();          // le curseur remonte l'arbre d'un cran
-                System.out.println("//cursor is " + cursor.getName() + "//");
-                Variable rootVar = unassignedVariables.peekLast();
-                if (cursor == rootVar && !itMap.get(rootVar).hasNext()) {
-                    return;
-                }
-            }
-            if (itMap.get(cursor).hasNext()) {
-                reassignVar(cursor, itMap.get(cursor).next(), partialAssignment);
-                temp.addFirst(cursor);
-            }
-            System.out.println("lastvar is " + cursor.getName() + ", value is " + currValMap.get(cursor));
-            solutions(partialAssignment, unassignedVariables, accumulator);
-        } else {
-            Map<Variable, String> toAdd = new HashMap();
-            for (Variable var : partialAssignment.keySet()) {
-                toAdd.put(var, partialAssignment.get(var));
-            }
-            if (verifyConstraints(partialAssignment)) {
-                System.out.println("***Constraint satisfied***");
-                allSolutions.add(toAdd);
-            }
-
-            accumulator.add(toAdd);
-            solutions(partialAssignment, unassignedVariables, accumulator);
-        }
+        return allSolutions;
     }
 
     public List<RestrictedDomain> solution() {
         List<RestrictedDomain> solution = new ArrayList();
-        if (allSolutions.isEmpty()) {
-            allSolutions();
-        } else {
-            solit = allSolutions.iterator();
-            Map<Variable, String> solutionMap;
-            solutionMap = solit.next();
-            for (Variable var : solutionMap.keySet()) {
-                solution.add(new RestrictedDomain(var, solutionMap.get(var)));
-            }
+        Map<Variable, String> partialAssignment = new HashMap();
+        Deque<Variable> unassignedVariables = new LinkedList();
+        unassignedVariables.addAll(this.scope);
+        Map<Variable, String> solutionMap = new HashMap();
+        Map<Variable, String> temp = solution(partialAssignment, unassignedVariables);
+        if (temp != null) {
+            solutionMap.putAll(temp);
+        }
+        for (Variable var : solutionMap.keySet()) {
+            Set<String> domain = new HashSet();
+            domain.add(solutionMap.get(var));
+            solution.add(new RestrictedDomain(var, domain));
         }
         return solution;
     }
 
-    private String assignmentToString(Map<Variable, String> assignment) {
-        String varStr = "";
+    public Map<Variable, String> solution(Map<Variable, String> partialAssignment,
+            Deque<Variable> unassignedVariables) {
+        if (unassignedVariables.isEmpty()) {
+            if (satisfiesConstraints(partialAssignment)) {
+                return partialAssignment;
+            }
+        } else {
+            Variable var = unassignedVariables.pop();
+            for (String val : var.getDomain()) {
+                Deque<Variable> tempQ = new LinkedList();
+                tempQ.addAll(unassignedVariables);
+                partialAssignment.put(var, val);
+                Map<Variable, String> tempPartialAssignment = new HashMap();
+                tempPartialAssignment.putAll(partialAssignment);
+                return solution(tempPartialAssignment, tempQ);
+            }
+        }
+        return null;
+    }
+
+    public Set<Map<Variable, String>> solutions(Map<Variable, String> partialAssignment,
+            Deque<Variable> unassignedVariables, Map<Variable, Set<String>> domains, Set<Map<Variable, String>> accumulator) {
+        //printQ(unassignedVariables);
+        if (unassignedVariables.isEmpty()) {
+            printAssignment(partialAssignment);
+            if (!accumulator.contains(partialAssignment)) {
+                if (satisfiesConstraints(partialAssignment)) {
+                    accumulator.add(partialAssignment);
+                    return accumulator;
+                }
+            }
+        } else {
+            Variable var = unassignedVariables.pop();
+            for (String val : domains.get(var)) {
+                Deque<Variable> tempQ = new LinkedList();
+                tempQ.addAll(unassignedVariables);
+                partialAssignment.put(var, val);
+                Set<Map<Variable, String>> tempAccu = new HashSet();
+                tempAccu.addAll(accumulator);
+                Map<Variable, String> tempPartialAssignment = new HashMap();
+                tempPartialAssignment.putAll(partialAssignment);
+                Set<Map<Variable, String>> solutions = solutions(tempPartialAssignment, tempQ, domains, tempAccu);
+                if (solutions != null) {
+                    accumulator.addAll(solutions);
+                }
+            }
+            return accumulator;
+        }
+        return null;
+    }
+
+    private boolean satisfiesConstraints(Map<Variable, String> assignment) {
+        for (Constraint constraint : this.constraints) {
+            if (!constraint.isSatisfiedBy(assignment)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static void printAssignment(Map<Variable, String> assignment) {
+        System.out.print("[");
         for (Variable var : assignment.keySet()) {
-            varStr += var.getName() + ", " + assignment.get(var) + " ";
+            System.out.print(var.getName() + ": " + assignment.get(var) + ",");
         }
-        return varStr;
+        System.out.print("]");
+        System.out.println();
     }
 
-    private void assignVar(Map<Variable, String> partialAssignment,
-            Deque<Variable> unassignedVariables, Set<Map<Variable, String>> accumulator) {
-        Iterator<Variable> descVarIt = unassignedVariables.descendingIterator();
-        while (descVarIt.hasNext()) {
-            Variable var = descVarIt.next();
-            if (!partialAssignment.keySet().contains(var)) {
-                System.out.println("\nvar assigned");
-                partialAssignment.put(var, currValMap.get(var));
-                System.out.println(var.getName());
-            }
+    public static void printQ(Deque<Variable> variables) {
+        System.out.print("(");
+        for (Variable var : variables) {
+            System.out.print(var.getName() + ",");
         }
+        System.out.print(")");
+        System.out.println();
     }
 
-    private void reinitIt(Variable cursor) {
-        itMap.replace(cursor, cursor.getDomain().iterator());
-        currValMap.replace(cursor, itMap.get(cursor).next());
-    }
-
-    private void reassignVar(Variable cursor, String newVal, Map<Variable, String> partialAssignment) {
-        currValMap.replace(cursor, newVal);
-        partialAssignment.replace(cursor, newVal);
-    }
-
-    private boolean verifyConstraints(Map<Variable, String> assignment) {
-        boolean isSatisfied = true;
-        String assignOut = "";
-        for (Constraint constraint : constraints) {
-            List<RestrictedDomain> assessment = new ArrayList();
-            for (Variable var : scope) {
-                assignOut += var.getName() + " " + assignment.get(var) + ", ";
-                assessment.add(new RestrictedDomain(var, assignment.get(var)));
+    public static void printSolutions(Set<List<RestrictedDomain>> allSolutions) {
+        for (List<RestrictedDomain> solution : allSolutions) {
+            System.out.print("solution: {");
+            for (RestrictedDomain domain : solution) {
+                System.out.print(domain.getVariable().getName() + ": " + domain.getSubdomain().iterator().next() + ", ");
             }
-            if (!constraint.isSatisfiedBy(assessment)) {
-                isSatisfied = false;
-            }
+            System.out.print("}");
+            System.out.println();
         }
-        System.out.println(assignOut);
-        return isSatisfied;
     }
 }
