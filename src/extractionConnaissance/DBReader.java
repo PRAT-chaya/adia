@@ -1,10 +1,12 @@
 package extractionConnaissance;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +36,7 @@ public class DBReader {
             return res;
         }catch(IOException e){
             System.out.println("Pas content :{");
+            return null;
         }
     }
     
@@ -72,5 +75,19 @@ public class DBReader {
         }
         return new Database(orderedVariables, instances);
     }
-
+    
+    public static void main(String[] args) {
+        Set<Variable> variables = new HashSet();
+        String variableLine = "angine;prise_sirop;fièvre;œdème;fatigué(e);toux;vacciné(e);hypothermie;allergie_sucre;boutons;grippe;virus;";
+        for (String variableName: variableLine.split(";")) {
+            variables.add(new Variable(variableName,""));
+        }
+        DBReader dbr = new DBReader(variables);
+        Database db = dbr.readCSV("/home/axel/Downloads/bases/db_b1_n1000_p01.csv");
+        System.out.println("file opening");
+        System.out.println(db);
+        BooleanDatabase boolDB = Database.booleanConvert(db);
+        System.out.println("conversion success");
+        System.out.print(boolDB);
+    }
 }
