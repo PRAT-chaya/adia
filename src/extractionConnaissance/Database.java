@@ -7,6 +7,7 @@ package extractionConnaissance;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import representation.Variable;
 
@@ -48,12 +49,24 @@ public class Database {
                         
                     default:
                         Variable newvar = new Variable(var.getName()+"_"+instance.get(var),"True","False");
-                        
-                        if(ListContainsVar(booleanDB.getVariables(),newvar)){
+ 
+                        if(!ListContainsVar(booleanDB.getVariables(), newvar)){                            
                             System.out.println("default : var : "+ newvar.getName()+ " liste: " +ListToString(booleanDB.getVariables()));
                             addColumn(newvar, booleanDB);
                             booleanDB.getVariables().add(newvar);
-                        } 
+                            
+                            /**
+                             * On parcourt notre csv en arrière pour ajouter la nouvelle colonne découverte
+                             */
+                            List<Map<Variable,Boolean>> transactions = booleanDB.getTransactions();
+                            
+                            for(int i = transactions.size()-1; i > 0; i--) {               
+                                transactions.get(i).put(newvar, Boolean.FALSE);
+                            }
+                            
+                            booleanDB.setTransactions(transactions);
+                        }
+                        
                         res.put(newvar, Boolean.TRUE);
                         break;
                 }
@@ -67,7 +80,6 @@ public class Database {
     public static Boolean ListContainsVar(List<Variable> liste, Variable var){
         for(Variable listeVar: liste){
             if(var.getName() == listeVar.getName()){
-                
                 return true;
             }
         }
@@ -89,6 +101,14 @@ public class Database {
                 if(key.getName() == var.getName()){
                     break;
                 }
+                
+                System.out.println(key.getName());
+                
+                /** TODO
+                 * Corriger l'erreur ici, on a un java.util.ConcurrentModificationException Exception
+                 * On boucle sur instance et on fait un put, Java n'aime pas
+                 * Il y a des façons pour corriger ça, j'ai tenté mais je ne suis pas expert de la mort qui tue
+                 */
                 instance.put(var, Boolean.FALSE);
             }
         }
@@ -114,6 +134,4 @@ public class Database {
         }
         return res;
     }
-    
-    
 }
