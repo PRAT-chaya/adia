@@ -1,19 +1,12 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+/**
+ *
+ * @author 21600639 : DENOUAL Axel
+ * @author 21910036 : ROUSSEAU Alexy
+ * @author 21907858 : SABATIER Brian
+ * 
  */
 package ppc;
 
-/**
- *
- * @author ordinaute
- */
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
@@ -26,10 +19,6 @@ import java.util.Set;
 import representation.*;
 import satisfiability.GeneralizedArcConsistency;
 
-/**
- *
- * @author ordinaute
- */
 public class BacktrackSearch {
 
     protected final Set<Constraint> constraints;
@@ -38,17 +27,24 @@ public class BacktrackSearch {
     public BacktrackSearch(Set<Constraint> constraints) {
         this.constraints = constraints;
         this.scope = new HashSet();
+        
         for (Constraint constraint : constraints) {
             this.scope.addAll(constraint.getScope());
         }
     }
 
+    /**
+     * Méthode permettant de générer toutes les solutions d'un problème
+     * Pour peut qu'il ait des contraintes
+     * @return 
+     */
     public Set<List<RestrictedDomain>> allSolutions() {
         Map<Variable, String> partialAssignment = new HashMap();
         Deque<Variable> unassignedVariables = new LinkedList();
         unassignedVariables.addAll(this.scope);
         Set<Map<Variable, String>> accumulator = new HashSet();
         Map<Variable, Set<String>> domains = new HashMap();
+        
         for (Variable var : this.scope) {
             Set<String> domain = new HashSet();
             domain.addAll(var.getDomain());
@@ -60,13 +56,16 @@ public class BacktrackSearch {
 
         Set<Map<Variable, String>> solutions = solutions(partialAssignment, unassignedVariables, domains, accumulator);
         Set<List<RestrictedDomain>> allSolutions = new HashSet();
+        
         for (Map<Variable, String> solution : solutions) {
             List<RestrictedDomain> rdSolution = new ArrayList();
+            
             for (Variable var : solution.keySet()) {
                 Set<String> domain = new HashSet();
                 domain.add(solution.get(var));
                 rdSolution.add(new RestrictedDomain(var, domain));
             }
+            
             allSolutions.add(rdSolution);
         }
         return allSolutions;
@@ -79,14 +78,17 @@ public class BacktrackSearch {
         unassignedVariables.addAll(this.scope);
         Map<Variable, String> solutionMap = new HashMap();
         Map<Variable, String> temp = solution(partialAssignment, unassignedVariables);
+        
         if (temp != null) {
             solutionMap.putAll(temp);
         }
+        
         for (Variable var : solutionMap.keySet()) {
             Set<String> domain = new HashSet();
             domain.add(solutionMap.get(var));
             solution.add(new RestrictedDomain(var, domain));
         }
+        
         return solution;
     }
 
@@ -107,6 +109,7 @@ public class BacktrackSearch {
                 return solution(tempPartialAssignment, tempQ);
             }
         }
+        
         return null;
     }
 
