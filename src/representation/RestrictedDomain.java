@@ -28,6 +28,11 @@ public class RestrictedDomain {
             this.subdomain.add(val);
         }
     }
+    
+    public RestrictedDomain(Variable variable, Set<String> subdomain){
+        this.variable = variable;
+        this.subdomain = subdomain;
+    }
 
     /**
      * Méthode permettant de retourner la variable concernée par le domaine restreint
