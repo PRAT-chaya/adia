@@ -5,6 +5,7 @@
  */
 package extractionConnaissance;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -30,13 +31,21 @@ public class Database {
         BooleanDatabase booleanDB = new BooleanDatabase();
         for(Map<Variable, String> instance : db.getInstances()){
             Map<Variable,Boolean> res = new HashMap();
+            
+            List<Variable> varcopy = new ArrayList();
+            for(Variable var : booleanDB.getVariables()){
+                varcopy.add(var);
+            }
+            
             for(Variable var : instance.keySet()){
-                
                 switch(instance.get(var)){
                     case "0":
                         res.put(var, Boolean.FALSE);
                         if(!ListContainsVar(booleanDB.getVariables(),var)){
                             booleanDB.getVariables().add(var);
+                        }
+                        else{
+                            varcopy.remove(var);
                         }
                         break;
                         
@@ -45,32 +54,28 @@ public class Database {
                         if(!ListContainsVar(booleanDB.getVariables(),var)){
                             booleanDB.getVariables().add(var);
                         }
+                        else{
+                            varcopy.remove(var);
+                        }
                         break;
                         
                     default:
                         Variable newvar = new Variable(var.getName()+"_"+instance.get(var),"True","False");
  
                         if(!ListContainsVar(booleanDB.getVariables(), newvar)){                            
-                            System.out.println("default : var : "+ newvar.getName()+ " liste: " +ListToString(booleanDB.getVariables()));
                             addColumn(newvar, booleanDB);
                             booleanDB.getVariables().add(newvar);
-                            
-                            /**
-                             * On parcourt notre csv en arrière pour ajouter la nouvelle colonne découverte
-                             */
-                            List<Map<Variable,Boolean>> transactions = booleanDB.getTransactions();
-                            
-                            for(int i = transactions.size()-1; i > 0; i--) {               
-                                transactions.get(i).put(newvar, Boolean.FALSE);
-                            }
-                            
-                            booleanDB.setTransactions(transactions);
                         }
-                        
+                        else{
+                            varcopy.remove(newvar);
+                        }
                         res.put(newvar, Boolean.TRUE);
                         break;
                 }
                 
+            }
+            for(Variable var : varcopy){
+                res.put(var, Boolean.FALSE);
             }
             booleanDB.getTransactions().add(res);
         }
@@ -79,7 +84,7 @@ public class Database {
     
     public static Boolean ListContainsVar(List<Variable> liste, Variable var){
         for(Variable listeVar: liste){
-            if(var.getName() == listeVar.getName()){
+            if(var.getName().equals(listeVar.getName())){
                 return true;
             }
         }
@@ -97,18 +102,13 @@ public class Database {
     
     public static void addColumn(Variable var, BooleanDatabase booleanDB){
         for(Map<Variable, Boolean> instance : booleanDB.getTransactions()){
+            Boolean isInInstance = false;
             for(Variable key : instance.keySet()){
-                if(key.getName() == var.getName()){
-                    break;
+                if(key.getName().equals(var.getName())){
+                    isInInstance = true;
                 }
-                
-                System.out.println(key.getName());
-                
-                /** TODO
-                 * Corriger l'erreur ici, on a un java.util.ConcurrentModificationException Exception
-                 * On boucle sur instance et on fait un put, Java n'aime pas
-                 * Il y a des façons pour corriger ça, j'ai tenté mais je ne suis pas expert de la mort qui tue
-                 */
+            }
+            if(isInInstance){
                 instance.put(var, Boolean.FALSE);
             }
         }
