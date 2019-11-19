@@ -6,186 +6,200 @@
 package extractionConnaissance;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import representation.RestrictedDomain;
-import representation.Rule;
-import representation.StrictRule;
 import representation.Variable;
 
 /**
- *
- * @author ordinaute
+ * Classe permettant de trouver des Motifs fréquents
  */
-public class AssociationRuleMiner {
+public class FrequentItemsetMiner {
 
-    private Map<Set<Variable>, Integer> frequentItemsets;
     private BooleanDatabase db;
-    private Set<Variable> scope;
+    private Set<Variable> minedScope;
 
-    public AssociationRuleMiner(BooleanDatabase db, Map<Set<Variable>, Integer> frequentItemsets, Set<Variable> scope) {
+    public FrequentItemsetMiner(BooleanDatabase db) {
         this.db = db;
-        this.frequentItemsets = frequentItemsets;
-        this.scope = scope;
+        this.minedScope = new HashSet();
+        
+        minedScope.addAll(db.getVariables());
     }
 
     /**
-     * Méthode permettant de miner des règles strictes
-     * Générer des règles candidates et vérifier si elles sont intéressantes
-     * Appelle rule miner avec uniquement des règles strictes
+     * Retourne les ItemSet fréquents en injectant en entrée une fréquence minimale
      * @param minFreq
-     * @param minConf
      * @return 
      */
-    public Set<Rule> strictRuleMiner(int minFreq, double minConf) {
-        return AssociationRuleMiner.confidenceFilter(
-                minConf, this.frequentItemsets,
-                ruleMiner(minFreq, this.db.getTransactions(), this.frequentItemsets, this.scope, true));
-    }
+    public Map<Set<Variable>, Integer> frequentItemsets(int minFreq) {
+        Map<Set<Variable>, Integer> frequentItemsets = new HashMap();
+        Map<Variable, Integer> frequentSingletons = frequentSingletons(minFreq); // Un singleton est un itemset qui ne concerne qu'une variable
+        
+        /**
+         * On parcourt nos singleton
+         */
+        for (Variable singleton : frequentSingletons.keySet()) {
+            Set<Variable> varset = new HashSet();
+            varset.add(singleton);
+            frequentItemsets.put(varset, frequentSingletons.get(singleton));
+        }
 
-    /**
-     * Génère les règles candidates
-     * @param minFreq
-     * @param transactions
-     * @param frequentItemsets
-     * @param scope
-     * @param strictRule
-     * @return 
-     */
-    public static Map<Rule, Integer> ruleMiner(int minFreq,
-            List<Map<Variable, Boolean>> transactions,
-            Map<Set<Variable>, Integer> frequentItemsets,
-            Set<Variable> scope, boolean strictRule) {
-        Map<Rule, Integer> minedRules = new HashMap();
-        for (int r = 1; r < scope.size(); r++) {
-            Map<Rule, Integer> tempMinedRules = new HashMap();
-            Set<Set<Variable>> varsets = new HashSet();
-            for (Set<Variable> itemset : frequentItemsets.keySet()) {
-                if (itemset.size() > r) {
-                    varsets.add(itemset);
-                }
+        boolean freqEnough = true;
+
+        /**
+         * R (profondeur de l'arbre de recherche) = 2 car on a déjà tous les singletons fréquents trouvés
+         * On examine désormais les paires
+         */
+        for (int r = 2; r <= frequentSingletons.keySet().size() && freqEnough; r++) {
+            Variable vars[] = new Variable[frequentSingletons.keySet().size()];
+            int i = 0;
+            
+            for (Variable var : frequentSingletons.keySet()) {
+                vars[i] = var;
+                i++;
             }
-            Set<Rule> toCheck = new HashSet();
-            for (Set<Variable> varset : varsets) {
-                toCheck.addAll(rulesBuilder(varset, r, strictRule));
+            
+            List<Variable[]> toCheck = new ArrayList();
+             /**
+              * Génération des candidats en fonction du nombre de variables souhaité dans le motif (A-B-C = 3 etc)
+              */
+            buildCombination(vars, vars.length, r, toCheck);
+            Set<Set<Variable>> tuples = new HashSet();
+            
+            /**
+             * Conversion d'un List<Variable[]> en Set de Variables
+             */
+            for (Variable[] tuple : toCheck) {
+                tuples.add(new HashSet<>(Arrays.asList(tuple)));
             }
-            for (Map<Variable, Boolean> transaction : transactions) {
-                Map<Variable, String> assignment = new HashMap();
-                for (Variable var : transaction.keySet()) {
-                    assignment.put(var, Variable.TRUE);
-                }
-                for (Rule rule : toCheck) {
-                    //printBooleanRule(rule);
-                    if (rule.isSatisfiedBy(assignment)) {
-                        if (tempMinedRules.keySet().contains(rule)) {
-                            int val = tempMinedRules.get(rule);
-                            val++;
-                            tempMinedRules.replace(rule, val);
-                        } else {
-                            tempMinedRules.put(rule, 1);
-                        }
-                        //System.out.println("freq: " + minedRules.get(rule));
-                        //System.out.println();
-                    }
-                }
-            }
-            if (!tempMinedRules.isEmpty()) {
-                boolean freqEnough = false;
-                for (Integer freq : tempMinedRules.values()) {
-                    if (freq >= minFreq) {
-                        freqEnough = true;
-                        break;
-                    }
-                }
-                if (!freqEnough) {
-                    break;
-                } else {
-                    Set<Rule>tempRuleSet = new HashSet();
-                    tempRuleSet.addAll(tempMinedRules.keySet());
-                    for(Rule rule : tempRuleSet) {
-                        if (tempMinedRules.get(rule) < minFreq) {
-                            tempMinedRules.remove(rule);
-                        }
-                    }
-                    minedRules.putAll(tempMinedRules);
-                }
+
+            Map<Set<Variable>, Integer> temp = new HashMap();
+            temp = tuplesFrequence(tuples);
+            temp = freqFilter(temp, minFreq);
+            
+            if (!temp.isEmpty()) {
+                frequentItemsets.putAll(temp);
             } else {
-                break;
+                freqEnough = false;
             }
         }
-        return minedRules;
-    }
-
-    /**
-     * Filtrer les règles à partir de leur confiance
-     * 
-     * @param minConf
-     * @param frequentItemsets
-     * @param minedRules
-     * @return 
-     */
-    public static Set<Rule> confidenceFilter(double minConf, Map<Set<Variable>, Integer> frequentItemsets, Map<Rule, Integer> minedRules) {
-        Set<Rule> filteredRules = new HashSet();
-        filteredRules.addAll(minedRules.keySet());
-        for(Rule rule : minedRules.keySet()){
-            double ruleFreq = minedRules.get(rule);
-            double itemsetFreq = frequentItemsets.get(rule.getPremiseScope());
-            double ruleConf = ruleFreq/itemsetFreq;
-            if(ruleConf < minConf){
-                filteredRules.remove(rule);
-            }
-        }
-        return filteredRules;
-    }
-
-    /**
-     * 
-     * @param itemset
-     * @param r
-     * @param strictRule
-     * @return 
-     */
-    public static Set<Rule> rulesBuilder(Set<Variable> itemset, int r, boolean strictRule) {
-        Set<Rule> rules = new HashSet();
-        //Set<Variable> varset = new HashSet();
-        //varset.addAll(itemset);
-        //rules.addAll(rulesBuilder(r, varset, rules));
-        List<Variable[]> premisesVars = new ArrayList();
-        Variable vars[] = new Variable[itemset.size()];
-        int i = 0;
-        for (Variable var : itemset) {
-            vars[i] = var;
-            i++;
-        }
-        buildCombination(vars, vars.length, r, premisesVars);
-        for (Variable[] premiseVars : premisesVars) {
-            List<RestrictedDomain> premise = new ArrayList();
-            List<RestrictedDomain> conclusion = new ArrayList();
-            Set<Variable> temp = new HashSet();
-            temp.addAll(itemset);
-            for (Variable var : premiseVars) {
-                premise.add(new RestrictedDomain(var, Variable.TRUE));
-                temp.remove(var);
-            }
-            for (Iterator<Variable> tempIt = temp.iterator(); tempIt.hasNext();) {
-                Variable var = tempIt.next();
-                conclusion.add(new RestrictedDomain(var, Variable.TRUE));
-            }
-            if (!premise.isEmpty() && !conclusion.isEmpty()) {
-                if (strictRule) {
-                    rules.add(new StrictRule(premise, conclusion));
-                } else {
-                    rules.add(new Rule(premise, conclusion));
+        
+        Set<Variable> tempScope = new HashSet();
+        
+        for (Set<Variable> itemset : frequentItemsets.keySet()) {
+            for (Variable var : this.minedScope) {
+                if (itemset.contains(var)) {
+                    if (!tempScope.contains(var)) {
+                        tempScope.add(var);
+                    }
                 }
             }
         }
-        return rules;
+        
+        minedScope = tempScope;
+        return frequentItemsets;
     }
 
+    public Set<Variable> getMinedScope() {
+        return minedScope;
+    }
+
+    public static Map<Set<Variable>, Integer> freqFilter(Map<Set<Variable>, Integer> tuplesFrequence, int minFreq) {
+        Set<Set<Variable>> tuples = new HashSet();
+        tuples.addAll(tuplesFrequence.keySet());
+        
+        for (Set<Variable> tuple : tuples) {
+            if (tuplesFrequence.get(tuple) < minFreq) {
+                tuplesFrequence.remove(tuple);
+            }
+        }
+        
+        return tuplesFrequence;
+    }
+
+    private Map<Set<Variable>, Integer> tuplesFrequence(Set<Set<Variable>> tuples) {
+        return tuplesFrequence(tuples, this.db.getTransactions());
+    }
+
+    /**
+     * Retourne en Map les n-tuplets passant le seuil de fréquence
+     *
+     * @param tuples Les n-tuplets qu'on veut évaluer
+     * @param transactions Les données quel'on a
+     * @return Map : en clé un n-tuplet, en valeur sa fréquence
+     */
+    public static Map<Set<Variable>, Integer> tuplesFrequence(Set<Set<Variable>> tuples, List<Map<Variable, Boolean>> transactions) {
+        Map<Set<Variable>, Integer> tuplesFreq = new HashMap();
+        for (Map<Variable, Boolean> transaction : transactions) {
+            for (Set<Variable> tuple : tuples) {
+                if (FrequentItemsetMiner.isTupleInTransaction(tuple, transaction)) {
+                    if (tuplesFreq.keySet().contains(tuple)) {
+                        int val = tuplesFreq.get(tuple);
+                        val++;
+                        tuplesFreq.replace(tuple, val);
+                    } else {
+                        tuplesFreq.put(tuple, 1);
+                    }
+                }
+            }
+        }
+        
+        return tuplesFreq;
+    }
+
+    /**
+     * Méthode qui fait appel à la méthode statique frequentSingletons
+     * Utile car beaucoup plus simple à utiliser en appel (utilise les variables de l'instance courante)
+     * @param minFreq
+     * @return 
+     */
+    private Map<Variable, Integer> frequentSingletons(int minFreq) {
+        return frequentSingletons(minFreq, this.db.getVariables(), this.db.getTransactions());
+    }
+
+    /**
+     * Retourne en Map les singletons passant le seuil de fréquence.
+     * Méthode statique (gère la logique)
+     *
+     * @param minFreq La fréquence minimum des singletons retournés
+     * @param vars Les variables dont on veut évaluer la fréquence
+     * @param transactions Les données dont on dispose
+     * @return Map avec en clé une variable et en valeur sa fréquence
+     */
+    public static Map<Variable, Integer> frequentSingletons(int minFreq, List<Variable> vars, List<Map<Variable, Boolean>> transactions) {
+        Map<Variable, Integer> singletonCount = new HashMap();
+        for (Variable var : vars) {
+            singletonCount.put(var, 0);
+        }
+        for (Map<Variable, Boolean> transaction : transactions) {
+            for (Variable var : transaction.keySet()) {
+                if (transaction.get(var)) {
+                    int temp = (singletonCount.get(var)) + 1;
+                    singletonCount.replace(var, temp);
+                }
+            }
+        }
+        Set<Variable> varset = new HashSet();
+        varset.addAll(singletonCount.keySet());
+        for (Variable var : varset) {
+            if (singletonCount.get(var) < minFreq) {
+                singletonCount.remove(var);
+            }
+        }
+        return singletonCount;
+    }
+
+    /**
+     * @param arr[] Input Array
+     * @param data[] Temporary array to store current combination
+     * @param start Staring index in arr[]
+     * @param end Ending index in arr[]
+     * @param index Current index in data[]
+     * @param r Size of a combination to be printed
+     */
     private static void combinationUtil(Variable arr[], Variable data[], int start,
             int end, int index, int r, List<Variable[]> output) {
 
@@ -216,23 +230,15 @@ public class AssociationRuleMiner {
         combinationUtil(arr, data, 0, n - 1, 0, r, output);
     }
 
-    private static void printBooleanRule(Rule rule) {
-        System.out.print("Rule: ");
-        for (RestrictedDomain domain : rule.getPremise()) {
-            System.out.print(domain.getVariable().getName());
+    public static boolean isTupleInTransaction(Set<Variable> tuple, Map<Variable, Boolean> transaction) {
+        boolean inTransaction = true;
+        for (Variable var : tuple) {
+            if (!transaction.keySet().contains(var)) {
+                inTransaction = false;
+            }
         }
-        System.out.print(" => ");
-        for (RestrictedDomain domain : rule.getConclusion()) {
-            System.out.print(domain.getVariable().getName());
-        }
-        System.out.println();
+        
+        return inTransaction;
     }
 
-    private static void printBooleanAssignment(Map<Variable, String> assignment) {
-        System.out.print("Assignment: ");
-        for (Variable var : assignment.keySet()) {
-            System.out.print(var.getName());
-        }
-        System.out.println();
-    }
 }
