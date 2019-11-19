@@ -115,18 +115,24 @@ public class BacktrackSearch {
 
     public Set<Map<Variable, String>> solutions(Map<Variable, String> partialAssignment,
             Deque<Variable> unassignedVariables, Map<Variable, Set<String>> domains, Set<Map<Variable, String>> accumulator) {
-        //printQ(unassignedVariables);
+        //Condition d'arrêt de la récursion
         if (unassignedVariables.isEmpty()) {
             printAssignment(partialAssignment);
             if (!accumulator.contains(partialAssignment)) {
+                //Si l'assignation (complète) satisfait l'ensemble des contraintes
                 if (satisfiesConstraints(partialAssignment)) {
+                    //On ajoute cette assignation à l'ensemble des solutions et on retourne cet ensemble
                     accumulator.add(partialAssignment);
-                    return accumulator;
+                    return accumulator;    
                 }
             }
         } else {
+            //On avance que d'une variable par appel récursif
             Variable var = unassignedVariables.pop();
             for (String val : domains.get(var)) {
+                /*Pour chaque valeur de chaque variable, on clone notre queue de
+                *variables, notre assignation partielle et notre ensemble de solutions
+                *pour pouvoir utiliser ces clones dans les appels récursifs que l'on va faire*/
                 Deque<Variable> tempQ = new LinkedList();
                 tempQ.addAll(unassignedVariables);
                 partialAssignment.put(var, val);
@@ -134,16 +140,21 @@ public class BacktrackSearch {
                 tempAccu.addAll(accumulator);
                 Map<Variable, String> tempPartialAssignment = new HashMap();
                 tempPartialAssignment.putAll(partialAssignment);
+                //Appel récursif qui nous renvoie toutes les solutions plus bas dans l'arbre de recherche
                 Set<Map<Variable, String>> solutions = solutions(tempPartialAssignment, tempQ, domains, tempAccu);
+                //S'il y en a on peut les ajouter à notre ensemble des solutions
                 if (solutions != null) {
                     accumulator.addAll(solutions);
                 }
             }
+            //Si jamais on a essayé toutes les valeurs du domaine de la variable, on renvoit l'ensemble des solutions;
+            /*Si on est à la première variable, l'exécution se termine 
+            *(car arriver ici signifie que toutes les récursions suivantes
+            *se sont terminées)*/
             return accumulator;
         }
         return null;
     }
-
     private boolean satisfiesConstraints(Map<Variable, String> assignment) {
         for (Constraint constraint : this.constraints) {
             if (!constraint.isSatisfiedBy(assignment)) {

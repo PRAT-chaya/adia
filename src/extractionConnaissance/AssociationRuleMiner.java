@@ -8,12 +8,13 @@ package extractionConnaissance;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import representation.RestrictedDomain;
 import representation.Rule;
+import representation.StrictRule;
 import representation.Variable;
 
 /**
@@ -23,45 +24,100 @@ import representation.Variable;
 public class AssociationRuleMiner {
 
     private Map<Set<Variable>, Integer> frequentItemsets;
+    private BooleanDatabase db;
     private Set<Variable> scope;
 
-    public AssociationRuleMiner(Map<Set<Variable>, Integer> frequentItemsets, Set<Variable> scope) {
+    public AssociationRuleMiner(BooleanDatabase db, Map<Set<Variable>, Integer> frequentItemsets, Set<Variable> scope) {
+        this.db = db;
         this.frequentItemsets = frequentItemsets;
         this.scope = scope;
     }
 
-    public Set<Rule> ruleMiner(int minFreq, double minConf) {
-        return AssociationRuleMiner.confidenceFilter(minConf, this.frequentItemsets,
-                AssociationRuleMiner.ruleMiner(minFreq, this.frequentItemsets, this.scope));
+    public Set<Rule> strictRuleMiner(int minFreq, double minConf) {
+        return AssociationRuleMiner.confidenceFilter(
+                minConf, this.frequentItemsets,
+                ruleMiner(minFreq, this.db.getTransactions(), this.frequentItemsets, this.scope, true));
     }
 
-    public static Map<Rule, Integer> ruleMiner(int minFreq, Map<Set<Variable>, Integer> frequentItemsets, Set<Variable> scope) {
+    public static Map<Rule, Integer> ruleMiner(int minFreq,
+            List<Map<Variable, Boolean>> transactions,
+            Map<Set<Variable>, Integer> frequentItemsets,
+            Set<Variable> scope, boolean strictRule) {
         Map<Rule, Integer> minedRules = new HashMap();
-        for (int r = 0; r < scope.size(); r++) {
-            Set<Rule> toCheck = new HashSet();
-            toCheck.addAll(rulesBuilder(scope, r));
+        for (int r = 1; r < scope.size(); r++) {
+            Map<Rule, Integer> tempMinedRules = new HashMap();
+            Set<Set<Variable>> varsets = new HashSet();
             for (Set<Variable> itemset : frequentItemsets.keySet()) {
-                for(Rule rule : toCheck){
-                    if (rule.isSatisfiedBy(itemset)){
-                        if(minedRules.keySet().contains(rule)){
-                            int val = minedRules.get(rule);
+                if (itemset.size() > r) {
+                    varsets.add(itemset);
+                }
+            }
+            Set<Rule> toCheck = new HashSet();
+            for (Set<Variable> varset : varsets) {
+                toCheck.addAll(rulesBuilder(varset, r, strictRule));
+            }
+            for (Map<Variable, Boolean> transaction : transactions) {
+                Map<Variable, String> assignment = new HashMap();
+                for (Variable var : transaction.keySet()) {
+                    assignment.put(var, Variable.TRUE);
+                }
+                for (Rule rule : toCheck) {
+                    //printBooleanRule(rule);
+                    if (rule.isSatisfiedBy(assignment)) {
+                        if (tempMinedRules.keySet().contains(rule)) {
+                            int val = tempMinedRules.get(rule);
                             val++;
-                            minedRules.replace(rule, val);
+                            tempMinedRules.replace(rule, val);
                         } else {
-                            minedRules.put(rule, 1);
+                            tempMinedRules.put(rule, 1);
                         }
+                        //System.out.println("freq: " + minedRules.get(rule));
+                        //System.out.println();
                     }
                 }
+            }
+            if (!tempMinedRules.isEmpty()) {
+                boolean freqEnough = false;
+                for (Integer freq : tempMinedRules.values()) {
+                    if (freq >= minFreq) {
+                        freqEnough = true;
+                        break;
+                    }
+                }
+                if (!freqEnough) {
+                    break;
+                } else {
+                    Set<Rule>tempRuleSet = new HashSet();
+                    tempRuleSet.addAll(tempMinedRules.keySet());
+                    for(Rule rule : tempRuleSet) {
+                        if (tempMinedRules.get(rule) < minFreq) {
+                            tempMinedRules.remove(rule);
+                        }
+                    }
+                    minedRules.putAll(tempMinedRules);
+                }
+            } else {
+                break;
             }
         }
         return minedRules;
     }
 
-    public static Set<Rule> confidenceFilter(double confidence, Map<Set<Variable>, Integer> frequentItemsets, Map<Rule, Integer> minedRules) {
-        return null;
+    public static Set<Rule> confidenceFilter(double minConf, Map<Set<Variable>, Integer> frequentItemsets, Map<Rule, Integer> minedRules) {
+        Set<Rule> filteredRules = new HashSet();
+        filteredRules.addAll(minedRules.keySet());
+        for(Rule rule : minedRules.keySet()){
+            double ruleFreq = minedRules.get(rule);
+            double itemsetFreq = frequentItemsets.get(rule.getPremiseScope());
+            double ruleConf = ruleFreq/itemsetFreq;
+            if(ruleConf < minConf){
+                filteredRules.remove(rule);
+            }
+        }
+        return filteredRules;
     }
 
-    public static Set<Rule> rulesBuilder(Set<Variable> itemset, int r) {
+    public static Set<Rule> rulesBuilder(Set<Variable> itemset, int r, boolean strictRule) {
         Set<Rule> rules = new HashSet();
         //Set<Variable> varset = new HashSet();
         //varset.addAll(itemset);
@@ -83,60 +139,19 @@ public class AssociationRuleMiner {
                 premise.add(new RestrictedDomain(var, Variable.TRUE));
                 temp.remove(var);
             }
-            for (Variable var : temp) {
+            for (Iterator<Variable> tempIt = temp.iterator(); tempIt.hasNext();) {
+                Variable var = tempIt.next();
                 conclusion.add(new RestrictedDomain(var, Variable.TRUE));
             }
-            rules.add(new Rule(premise, conclusion));
+            if (!premise.isEmpty() && !conclusion.isEmpty()) {
+                if (strictRule) {
+                    rules.add(new StrictRule(premise, conclusion));
+                } else {
+                    rules.add(new Rule(premise, conclusion));
+                }
+            }
         }
         return rules;
-    }
-
-    static List<Rule> rulesBuilder(int r, Set<Variable> varset, List<Rule> rules) {
-        List<Variable> varQ = new LinkedList();
-        varQ.addAll(varset);
-        for (int i = 1; i < varQ.size(); i++) {
-            List<RestrictedDomain> premise = new ArrayList();
-            List<Variable> temp = new LinkedList();
-            temp.addAll(varset);
-            Variable var = varQ.get(i - 1);
-            temp.remove(var);
-            premise.add(new RestrictedDomain(var, Variable.TRUE));
-            rules.addAll(combi(r, temp, premise, new ArrayList(), i - 1));
-        }
-        return rules;
-    }
-
-    public static List<Rule> combi(int r, List<Variable> varQ,
-            List<RestrictedDomain> premise, List<Rule> rules, int cursor) {
-        if (premise.size() == r) {
-            List<RestrictedDomain> conclusion = new ArrayList();
-            List<Variable> temp = new ArrayList();
-            temp.addAll(varQ);
-            for (RestrictedDomain domain : premise) {
-                temp.remove(domain.getVariable());
-            }
-            for (Variable var : temp) {
-                conclusion.add(new RestrictedDomain(var, Variable.TRUE));
-            }
-            Rule rule = new Rule(premise, conclusion);
-            rules.add(rule);
-            if (cursor == (varQ.size())) {
-                return rules;
-            }
-            premise = new ArrayList();
-            int i = r - (cursor + 1);
-            while (i < r) {
-                premise.add(new RestrictedDomain(varQ.get(i), Variable.TRUE));
-                i++;
-            }
-            cursor -= i;
-            combi(r, varQ, premise, rules, cursor);
-        } else {
-            Variable var = varQ.get(cursor);
-            premise.add(new RestrictedDomain(var, Variable.TRUE));
-            combi(r, varQ, premise, rules, cursor + 1);
-        }
-        return null;
     }
 
     private static void combinationUtil(Variable arr[], Variable data[], int start,
@@ -167,5 +182,25 @@ public class AssociationRuleMiner {
 
         // Print all combination using temprary array 'data[]' 
         combinationUtil(arr, data, 0, n - 1, 0, r, output);
+    }
+
+    private static void printBooleanRule(Rule rule) {
+        System.out.print("Rule: ");
+        for (RestrictedDomain domain : rule.getPremise()) {
+            System.out.print(domain.getVariable().getName());
+        }
+        System.out.print(" => ");
+        for (RestrictedDomain domain : rule.getConclusion()) {
+            System.out.print(domain.getVariable().getName());
+        }
+        System.out.println();
+    }
+
+    private static void printBooleanAssignment(Map<Variable, String> assignment) {
+        System.out.print("Assignment: ");
+        for (Variable var : assignment.keySet()) {
+            System.out.print(var.getName());
+        }
+        System.out.println();
     }
 }

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import representation.Variable;
 import java.util.Set;
+import representation.RestrictedDomain;
 import representation.Rule;
 
 /**
@@ -68,17 +69,38 @@ public class AssociationRuleMinerTest {
         transactions.add(transaction4);
         transactions.add(transaction5);
         transactions.add(transaction6);
-        FrequentItemsetMiner fiMiner = new FrequentItemsetMiner(new BooleanDatabase(vars, transactions));
-        Map<Set<Variable>, Integer> frequentItemsets = fiMiner.frequentItemsets(minFreq);
+        BooleanDatabase db = new BooleanDatabase(vars, transactions);
+        FrequentItemsetMiner fiMiner = new FrequentItemsetMiner(db);
+        Map<Set<Variable>, Integer> frequentItemsets = fiMiner.frequentItemsets(2);
+        for(Set<Variable> varset : frequentItemsets.keySet()){
+            System.out.print("Itemset: ");
+            for(Variable var : varset){
+                System.out.print(var.getName());
+            }
+            System.out.println();
+        }
         Set<Variable> scope = new HashSet();
         scope.addAll(fiMiner.getMinedScope());
-        AssociationRuleMiner arMiner = new AssociationRuleMiner(frequentItemsets, scope);
-        Map<Rule, Integer> minedRules = AssociationRuleMiner.ruleMiner(minFreq, frequentItemsets, scope);
+        AssociationRuleMiner arMiner = new AssociationRuleMiner(db, frequentItemsets, scope);
+        Map<Rule, Integer> minedRules = AssociationRuleMiner.ruleMiner(minFreq, db.getTransactions(), frequentItemsets, scope, true);
+        Set<Rule> confFilteredRules = AssociationRuleMiner.confidenceFilter(0.6, frequentItemsets, minedRules);
         Set<Rule> rules = minedRules.keySet();
-        for (Rule rule : rules){
-            System.out.println(rule);
-            System.out.println("FREQ: " + minedRules.get(rule));
+        for (Rule rule : confFilteredRules){
+            printBooleanRule(rule);
+            //System.out.println("FREQ: " + minedRules.get(rule));
         }
-    }   
+    }
+    
+    private static void printBooleanRule(Rule rule){
+        System.out.print("Rule: ");
+        for(RestrictedDomain domain : rule.getPremise()){
+            System.out.print(domain.getVariable().getName());
+        }
+        System.out.print(" => ");
+        for(RestrictedDomain domain : rule.getConclusion()){
+            System.out.print(domain.getVariable().getName());
+        }
+        System.out.println();
+    }
 
 }
